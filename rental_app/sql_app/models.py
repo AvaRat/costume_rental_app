@@ -14,7 +14,7 @@ class Location(Base):
     address = Column(String, nullable=False)
 
     reservations = relationship("Reservation", back_populates="pick_up_location")
-    employees = relationship("Employee", back_populates="location_id")
+    employees = relationship("Employee", back_populates="location")
 
 
 class Employee(Base):
@@ -26,6 +26,7 @@ class Employee(Base):
     surname = Column(String, nullable=False)
     location_id = Column(Integer, ForeignKey("Locations.location_id"), nullable=False)
 
+    location = relationship("Location", back_populates="employees")
 
 class CostumeItem(Base):
     __tablename__ = "Costume_items"

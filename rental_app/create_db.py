@@ -31,5 +31,6 @@ with open("rental_app/initial_data.json", 'r') as f:
             db_model = models.CostumeModel(**model)
             db.add(db_model)
         db.commit()
+        print("succesfully added records to DB")
     finally:
         db.close()
