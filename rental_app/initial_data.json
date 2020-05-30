@@ -1,0 +1,23 @@
+{
+    "Models": [
+        {"id": 1, "name": "Piracki kozak", "size": "M", "type_": "regularny", "collection": "podróżnicze", "price": 143.2},
+        {"id": 2, "name": "Bawarczyk", "size": "L", "type_": "regularny", "collection": "dookoła świata", "price": 155},
+        {"id": 3, "name": "Szkot", "size": "M", "type_": "regularny", "collection": "dookoła świata", "price": 100},
+        {"id": 4, "name": "Kaszub", "size": "S", "type_": "regularny", "collection": "dookoła świata", "price": 180},
+        {"id": 5, "name": "Kapitan Ameryka", "size": "M", "type_": "regularny", "collection": "superbohaterowie", "price": 220.2},
+        {"id": 6, "name": "SpiderMan", "size": "S", "type_": "regularny", "collection": "superbohaterowie", "price": 85.99},
+        {"id": 7, "name": "Król Melchior", "size": "L", "type_": "regularny", "collection": "świąteczna", "price": 259}
+    ],
+    "Employees": [
+        {"id": 1, "address": "Polna 54, 87-100 Toruń", "name": "Mariusz", "surname": "Magazynowski", "location_id":1},
+        {"id": 2, "address": "Długa 54, 55-140 Gdańsk", "name": "Łukasz", "surname": "Nowosalonowy", "location_id": 2}
+    ],
+    "Locations": [
+        {"id": 1, "name": "Magazyn główny", "address": "Nowowiejska 23, 02-590 Warszawa"},
+        {"id": 2, "name": "salon przy bulwarach", "address": "Bulwarowa 12, 02-590 Warszawa"}
+    ],
+    "Clients": [
+        {"id": 1, "address": "Szybka 1, 10-100 Lodz", "phone_nr": "678 981 123", "email": "test@gmail.com", "login": "test", "password": "admin1"},
+        {"id": 2, "address": "Kwaśna 18, 45-671 Gdansk", "phone_nr": "123 123 123", "email": "test2@gmail.com", "login": "test2", "password": "admin2"}
+    ]
+}
