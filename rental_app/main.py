@@ -4,9 +4,10 @@ import secrets
 from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.responses import JSONResponse
 
 from .sql_app import crud, models, schemas
-from create_db import populate_new_db
+from . import create_db
 from .sql_app.database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
@@ -20,11 +21,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
-@app.post("/create_db")
-def create_database(credentials: HTTPBasicCredentials = Depends(admin_check)):
-    return populate_new_db()
-
 def admin_check(credentials: HTTPBasicCredentials = Depends(security)):
     correct_username = secrets.compare_digest(credentials.username, "admin1")
     correct_password = secrets.compare_digest(credentials.password, "wypozyczalnia")
@@ -35,6 +31,12 @@ def admin_check(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
     return credentials.username
+
+@app.post("/create_db")
+def create_database(credentials: HTTPBasicCredentials = Depends(admin_check)):
+    return create_db.populate_new_db()
+
+
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_db)):
     user = crud.get_user_from_username(db, credentials.username)
@@ -57,9 +59,8 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
 def welcome_page():
     return {"message": "witaj w wypożyczalni strojów. Zaloguj się aby zmienić rezerwację. Odwiedź /costumes aby zobaczyć dostępne stroje"}
 
-@app.post("/new_reservation", response_model=bool)
+@app.post("/new_reservation", status_code=status.HTTP_201_CREATED)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
-    
     return crud.create_reservation(db, reservation, username=user.login)
 
 @app.get("/my_reservations", response_model=List[schemas.ReservationOut])
