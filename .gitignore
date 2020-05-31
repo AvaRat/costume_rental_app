@@ -1,1 +1,2 @@
-rental_env/*
+rental_env/
+__pycache__/
