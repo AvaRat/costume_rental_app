@@ -6,6 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from .sql_app import crud, models, schemas
+from create_db import populate_new_db
 from .sql_app.database import SessionLocal, engine
 
 models.Base.metadata.create_all(bind=engine)
@@ -19,6 +20,21 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.post("/create_db")
+def create_database(credentials: HTTPBasicCredentials = Depends(admin_check)):
+    return populate_new_db()
+
+def admin_check(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(credentials.username, "admin1")
+    correct_password = secrets.compare_digest(credentials.password, "wypozyczalnia")
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
 
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_db)):
     user = crud.get_user_from_username(db, credentials.username)
