@@ -42,7 +42,7 @@ CREATE TABLE "Clients" (
 	"address" TEXT NOT NULL,
 	"phone_nr" TEXT NOT NULL,
 	"email" TEXT NOT NULL,
-	"login" TEXT NOT NULL,
+	"login" TEXT NOT NULL UNIQUE,
 	"password" TEXT NOT NULL,
 	CONSTRAINT "Clients_pk" PRIMARY KEY ("client_id")
 ) WITH (
@@ -77,7 +77,6 @@ CREATE TABLE "Subsciptions" (
 	"end_date" TIMESTAMP NOT NULL,
 	"nr_of_costumes" int NOT NULL,
 	"client_id" int NOT NULL,
-	"attendant_id" int NOT NULL,
 	CONSTRAINT "Subsciptions_pk" PRIMARY KEY ("subscribtion_id")
 ) WITH (
   OIDS=FALSE
@@ -102,6 +101,7 @@ CREATE TABLE "Costume_items" (
 	"costume_id" int NOT NULL,
 	"model_id" int NOT NULL,
 	"rental_id" int,
+	"location_id" int NOT NULL,
 	"reservation_id" int,
 	CONSTRAINT "Costume_items_pk" PRIMARY KEY ("costume_id")
 ) WITH (
@@ -137,13 +137,13 @@ ALTER TABLE "Business_clients" ADD CONSTRAINT "Business_clients_fk0" FOREIGN KEY
 ALTER TABLE "Individual_clients" ADD CONSTRAINT "Individual_clients_fk0" FOREIGN KEY ("client_id") REFERENCES "Clients"("client_id");
 
 ALTER TABLE "Subsciptions" ADD CONSTRAINT "Subsciptions_fk0" FOREIGN KEY ("client_id") REFERENCES "Business_clients"("client_id");
-ALTER TABLE "Subsciptions" ADD CONSTRAINT "Subsciptions_fk1" FOREIGN KEY ("attendant_id") REFERENCES "Employees"("employee_id");
 
 ALTER TABLE "Costume_rentals" ADD CONSTRAINT "Costume_rentals_fk0" FOREIGN KEY ("subscription_id") REFERENCES "Subsciptions"("subscribtion_id");
 ALTER TABLE "Costume_rentals" ADD CONSTRAINT "Costume_rentals_fk1" FOREIGN KEY ("reservation_id") REFERENCES "Reservations"("reservation_id");
 
 ALTER TABLE "Costume_items" ADD CONSTRAINT "Costume_items_fk0" FOREIGN KEY ("model_id") REFERENCES "Costume_models"("model_id");
 ALTER TABLE "Costume_items" ADD CONSTRAINT "Costume_items_fk1" FOREIGN KEY ("rental_id") REFERENCES "Costume_rentals"("rental_id");
-ALTER TABLE "Costume_items" ADD CONSTRAINT "Costume_items_fk2" FOREIGN KEY ("reservation_id") REFERENCES "Reservations"("reservation_id");
+ALTER TABLE "Costume_items" ADD CONSTRAINT "Costume_items_fk2" FOREIGN KEY ("location_id") REFERENCES "Locations"("location_id");
+ALTER TABLE "Costume_items" ADD CONSTRAINT "Costume_items_fk3" FOREIGN KEY ("reservation_id") REFERENCES "Reservations"("reservation_id");
 
 

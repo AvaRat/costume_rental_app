@@ -19,5 +19,15 @@
     "Clients": [
         {"id": 1, "address": "Szybka 1, 10-100 Lodz", "phone_nr": "678 981 123", "email": "test@gmail.com", "login": "test", "password": "admin1"},
         {"id": 2, "address": "Kwaśna 18, 45-671 Gdansk", "phone_nr": "123 123 123", "email": "test2@gmail.com", "login": "test2", "password": "admin2"}
+    ],
+    "Costumes": [
+        {"id":1, "model_id":1, "location_id":1},
+        {"id":2, "model_id":2, "location_id":1},
+        {"id":3, "model_id":4, "location_id":1},
+        {"id":4, "model_id":4, "location_id":2},
+        {"id":5, "model_id":4, "location_id":2},
+        {"id":6, "model_id":6, "location_id":1},
+        {"id":7, "model_id":7, "location_id":1},
+        {"id":8, "model_id":3, "location_id":2}
     ]
 }

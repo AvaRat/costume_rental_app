@@ -15,6 +15,7 @@ class Location(Base):
 
     reservations = relationship("Reservation", back_populates="pick_up_location")
     employees = relationship("Employee", back_populates="location")
+    costume_items = relationship("CostumeItem", back_populates="location")
 
 
 class Employee(Base):
@@ -32,11 +33,13 @@ class CostumeItem(Base):
     __tablename__ = "Costume_items"
 
     id = Column("costume_id", Integer, primary_key=True)
-    model_id = Column("model_id", Integer, ForeignKey("Costume_models.model_id"))
+    model_id = Column("model_id", Integer, ForeignKey("Costume_models.model_id"), nullable=False)
+    location_id = Column(ForeignKey("Locations.location_id"), nullable=False)
     rental_id = Column("rental_id", Integer, ForeignKey("Costume_rentals.rental_id"), nullable=True)
     reservation_id = Column(Integer, ForeignKey("Reservations.reservation_id"), nullable=True)
 
     model = relationship("CostumeModel", back_populates="items")
+    location = relationship("Location", back_populates="costume_items")
     rental = relationship("CostumeRental", back_populates="items")
     reservation = relationship("Reservation", back_populates="costumes")
 
@@ -67,6 +70,7 @@ class CostumeRental(Base):
 
 class Reservation(Base):
     __tablename__="Reservations"
+    
     id = Column("reservation_id", Integer, primary_key=True)
     date = Column("reservation_date", DateTime, nullable=False)
     pick_up_date = Column(DateTime, nullable=False)

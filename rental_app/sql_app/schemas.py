@@ -46,13 +46,21 @@ class CostumeItem(BaseModel):
     class Config:
         orm_mode = True
 
-class ReservationCreate(BaseModel):
+class ReservationBase(BaseModel):
     pick_up_date: datetime
     return_date: datetime
-    pick_up_location: str
-    costumes: List[CostumeItem] = []
+    pick_up_location_id: int
+
+class ReservationCreate(ReservationBase):
+    costumes: List[int] = [] #list of costume_id's
 
     class Config:
         orm_mode = True
 
-
+class ReservationDb(ReservationBase):
+    id: int
+    date: datetime
+    client_id: int
+    
+    class Config:
+        orm_mode = True

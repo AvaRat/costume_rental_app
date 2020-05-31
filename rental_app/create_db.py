@@ -30,6 +30,9 @@ with open("rental_app/initial_data.json", 'r') as f:
         for model in data["Models"]:
             db_model = models.CostumeModel(**model)
             db.add(db_model)
+        for costume in data["Costumes"]:
+            db_costume = models.CostumeItem(**costume)
+            db.add(db_costume)
         db.commit()
         print("succesfully added records to DB")
     finally:

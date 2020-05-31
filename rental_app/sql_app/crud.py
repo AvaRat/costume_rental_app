@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 import uuid
 from . import models, schemas
+from datetime import datetime
 
 def create_costume_model(db: Session, model: schemas.CostumeModel):
     total_costumes = len(db.query(models.CostumeModel).all())
@@ -10,14 +11,43 @@ def create_costume_model(db: Session, model: schemas.CostumeModel):
     db.refresh(db_costume_model)
     return db_costume_model
 
+def create_reservation(db: Session, reservation: schemas.ReservationCreate, username: str):
+    total_res = len(db.query(models.Reservation).all())
+    reservation_db_model = schemas.ReservationDb(**reservation.dict(), id=total_res+1, \
+        date=datetime.now(), client_id=get_client_id_from_username(db,username))
+    db_reservation = models.Reservation(**reservation_db_model.dict())
+    selected_costumes = db.query(models.CostumeItem).filter(models.CostumeItem.id.\
+        in_(reservation.costumes)).all()
+    db.add(db_reservation)
+
+    for costume in selected_costumes:
+        costume.reservation = db_reservation
+        #costume.location = None
+    db.commit()
+    return True
+
+def get_user_from_username(db: Session, username: str):
+    return db.query(models.Client).filter(models.Client.login == username).first()
+
+
+def get_client_id_from_username(db: Session, username: str):
+    return db.query(models.Client).filter(models.Client.login == username).first().id
+
 def get_all_models(db: Session):
     return db.query(models.CostumeModel).all()
 
 def get_available_costume_items(db: Session):
-    return db.query(models.CostumeItem).filter(models.CostumeItem.reservation_id == None).first()
+    return db.query(models.CostumeItem).filter(models.CostumeItem.reservation_id == None).offset(skip).limit(limit).all()
+
+
+def get_all_costume_items(db: Session, skip: int = 0, limit: int = 10):
+    return db.query(models.CostumeItem).offset(skip).limit(limit).all()
 
 def get_client(db: Session, email: str):
     return db.query(models.Client).filter(models.Client.email == email).first()
+
+def get_client_reservations(db:Session, user_id: int):
+    return db.query(models.Client.reservations).filter(models.Client.client_id == user_id).all()
 
 def create_client(db: Session, client: schemas.ClientCreate):
     total_clients = len(db.query(models.Client).all())
