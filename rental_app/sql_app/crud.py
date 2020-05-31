@@ -1,5 +1,6 @@
 from typing import List
 from sqlalchemy.orm import Session
+from sqlalchemy import asc
 import uuid
 from . import models, schemas
 from datetime import datetime
@@ -38,17 +39,17 @@ def get_all_models(db: Session):
     return db.query(models.CostumeModel).all()
 
 def get_available_costume_items(db: Session):
-    return db.query(models.CostumeItem).filter(models.CostumeItem.reservation_id == None).offset(skip).limit(limit).all()
+    return db.query(models.CostumeItem).filter(models.CostumeItem.reservation_id == None).order_by(models.CostumeItem.id.asc()).offset(skip).limit(limit).all()
 
 
 def get_all_costume_items(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(models.CostumeItem).offset(skip).limit(limit).all()
+    return db.query(models.CostumeItem).order_by(models.CostumeItem.id.asc()).offset(skip).limit(limit).all()
 
 def get_client(db: Session, email: str):
     return db.query(models.Client).filter(models.Client.email == email).first()
 
 def get_user_reservations(db:Session, user_id: int) -> List[models.Reservation]:
-    return db.query(models.Reservation).filter(models.Reservation.client_id == user_id).all()
+    return db.query(models.Reservation).filter(models.Reservation.client_id == user_id).order_by(models.Reservation.date.asc()).all()
 
 def get_costume_models_from_reservation(db: Session, reservation_id: int) -> List[models.CostumeModel]:
     res = db.query(models.Reservation).get(reservation_id)
