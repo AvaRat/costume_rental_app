@@ -70,7 +70,6 @@ class CostumeRental(Base):
 
 class Reservation(Base):
     __tablename__="Reservations"
-    
     id = Column("reservation_id", Integer, primary_key=True)
     date = Column("reservation_date", DateTime, nullable=False)
     pick_up_date = Column(DateTime, nullable=False)

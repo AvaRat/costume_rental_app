@@ -1,3 +1,4 @@
+from typing import List
 from sqlalchemy.orm import Session
 import uuid
 from . import models, schemas
@@ -46,8 +47,13 @@ def get_all_costume_items(db: Session, skip: int = 0, limit: int = 10):
 def get_client(db: Session, email: str):
     return db.query(models.Client).filter(models.Client.email == email).first()
 
-def get_client_reservations(db:Session, user_id: int):
-    return db.query(models.Client.reservations).filter(models.Client.client_id == user_id).all()
+def get_user_reservations(db:Session, user_id: int) -> List[models.Reservation]:
+    return db.query(models.Reservation).filter(models.Reservation.client_id == user_id).all()
+
+def get_costume_models_from_reservation(db: Session, reservation_id: int) -> List[models.CostumeModel]:
+    res = db.query(models.Reservation).get(reservation_id)
+    return [costume.model for costume in res.costumes]
+
 
 def create_client(db: Session, client: schemas.ClientCreate):
     total_clients = len(db.query(models.Client).all())

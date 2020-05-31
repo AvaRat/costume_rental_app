@@ -41,14 +41,23 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
 def welcome_page():
     return {"message": "witaj w wypożyczalni strojów. Zaloguj się aby zmienić rezerwację. Odwiedź /costumes aby zobaczyć dostępne stroje"}
 
-@app.post("/user/new_reservation", response_model=bool)
+@app.post("/new_reservation", response_model=bool)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     
     return crud.create_reservation(db, reservation, username=user.login)
 
-@app.get("/user/my_reservations")
-def view_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
-    return crud.get_user_reservations(db, user_id)
+@app.get("/my_reservations", response_model=List[schemas.ReservationOut])
+def read_user_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    reservations_db = crud.get_user_reservations(db, user.id)
+    models = []
+    for res in reservations_db:
+        costumes = crud.get_costume_models_from_reservation(db, res.id)
+        reservations_prices = [costume.price for costume in costumes]
+        total_cost = sum(reservations_prices)
+        models.append(schemas.ReservationOut(date=res.date, pick_up_date=res.pick_up_date, return_date=res.return_date, \
+        pick_up_location_id=res.pick_up_location_id, costumes=crud.get_costume_models_from_reservation(db, res.id),\
+        total_cost=total_cost))
+    return models
 
 @app.get("/models", response_model=List[schemas.CostumeModel])
 def read_models(db: Session = Depends(get_db)):
@@ -56,7 +65,7 @@ def read_models(db: Session = Depends(get_db)):
 
 @app.get("/costumes", response_model=List[schemas.CostumeItem])
 def get_costumes(available_only: bool=False, skip: int=0, limit: int=10, db: Session = Depends(get_db)):
-    if(only_available):
+    if(available_only):
         return crud.get_available_costume_items(db, skip=skip, limit=limit)
     return crud.get_all_costume_items(db, skip=skip, limit=limit)
 

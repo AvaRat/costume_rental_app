@@ -25,6 +25,7 @@ class ClientCreate(BaseModel):
 
 class LocationPublic(BaseModel):
     address: str
+    name: str
 
     class Config:
         orm_mode = True
@@ -42,6 +43,14 @@ class CostumeModel(BaseModel):
 class CostumeItem(BaseModel):
     id: int
     model: CostumeModel
+
+    class Config:
+        orm_mode = True
+
+class CostumeItemOut(BaseModel):
+    model: CostumeModel
+    location: LocationPublic
+    n_items: int
 
     class Config:
         orm_mode = True
@@ -64,3 +73,11 @@ class ReservationDb(ReservationBase):
     
     class Config:
         orm_mode = True
+
+class ReservationOut(ReservationBase):
+    date: datetime
+    costumes: List[CostumeModel]
+    total_cost: float
+
+    class Config:
+        orm_mode=True
