@@ -70,7 +70,7 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
     return user
 
 @app.post("/test_new_resrvation")
-def post_test(reservation: schemas.ReservationCreate, db:Session = Depends(get_db())):
+def post_test(reservation: schemas.ReservationCreate, db:Session = Depends(get_db)):
     return crud.create_reservation(db, reservation, username='test')
     
 
