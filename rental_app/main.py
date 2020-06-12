@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from .sql_app import crud, models, schemas
 from . import create_db
@@ -14,6 +15,19 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 security = HTTPBasic()
+
+origins = [
+    'https://wypozyczalniastrojowteatrlnych.herokuapp.com',
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()

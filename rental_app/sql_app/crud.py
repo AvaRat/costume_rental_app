@@ -38,7 +38,7 @@ def get_client_id_from_username(db: Session, username: str):
 def get_all_models(db: Session):
     return db.query(models.CostumeModel).all()
 
-def get_available_costume_items(db: Session):
+def get_available_costume_items(db: Session, skip: int = 0, limit: int = 10):
     return db.query(models.CostumeItem).filter(models.CostumeItem.reservation_id == None).order_by(models.CostumeItem.id.asc()).offset(skip).limit(limit).all()
 
 
