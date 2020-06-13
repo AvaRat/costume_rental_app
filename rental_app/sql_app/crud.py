@@ -1,9 +1,13 @@
 from typing import List
 from sqlalchemy.orm import Session
-from sqlalchemy import asc
+from sqlalchemy import asc, or_, and_, func
+from sqlalchemy.sql import text
 import uuid
 from . import models, schemas
-from datetime import datetime
+from datetime import datetime, timedelta
+
+
+#get_available = text(""" """)
 
 def create_costume_model(db: Session, model: schemas.CostumeModel):
     total_costumes = len(db.query(models.CostumeModel).all())
@@ -28,6 +32,35 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate, user
     db.commit()
     return True
 
+def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, client: models.Client):
+    reservation_old = db.query(models.Reservation).filter(models.Reservation.id == reservation_new.id).first()
+    if not(reservation_old.client_id == client.id):
+        raise Exception("This reservation belongs to other user")
+    if(reservation_old.pick_up_date < datetime.now() or reservation_old.return_date < datetime.now()):
+        raise Exception("Chosen date is in the past")
+
+
+    reservation_old.pick_up_date = reservation_new.pick_up_date
+    reservation_old.return_date = reservation_new.return_date
+    db.commit()
+    return {"message": "succesfully modified reservation"}
+
+
+def rent_from_reservation(db: Session, reservation_id: int, pick_up_code: int):
+    total_rentals = len(db.query(models.CostumeRental).all())
+    reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
+    if(reservation==None):
+        raise Exception("given reservation doesn't exist")
+    new_rental = models.CostumeRental(id=total_rentals+1, start_date=datetime.now(), end_date=reservation.return_date, \
+                                    reservation_id=reservation_id)
+    db.add(new_rental)
+    for costume in reservation.costumes:
+        costume.reservation = None
+        costume.rental = new_rental
+
+    db.commit()
+    return True
+
 def get_user_from_username(db: Session, username: str):
     return db.query(models.Client).filter(models.Client.login == username).first()
 
@@ -38,8 +71,14 @@ def get_client_id_from_username(db: Session, username: str):
 def get_all_models(db: Session):
     return db.query(models.CostumeModel).all()
 
-def get_available_costume_items(db: Session, skip: int = 0, limit: int = 10):
-    return db.query(models.CostumeItem).filter(models.CostumeItem.reservation_id == None).order_by(models.CostumeItem.id.asc()).offset(skip).limit(limit).all()
+# (max(models.Reservation.pick_up_date, date_from) < min(models.Reservation.return_date, date_to))
+
+def get_available_costume_items(db: Session, date_from: datetime, date_to: datetime, limit: int):
+    costume_items = db.query(models.CostumeItem).join(models.Reservation).filter(or_(and_(date_from < date_to, date_to<models.Reservation.pick_up_date), and_(date_from>models.Reservation.return_date, date_to>models.Reservation.return_date))) \
+                    .order_by(models.CostumeItem.id.asc()).limit(limit)
+    
+    return costume_items.all() # db.query(costume_items).with_entities(func.count(costume_items.)).group_by(costume_items.column).all()
+
 
 
 def get_all_costume_items(db: Session, skip: int = 0, limit: int = 10):

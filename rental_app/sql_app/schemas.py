@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, OrderedDict
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -48,6 +48,7 @@ class CostumeItem(BaseModel):
         orm_mode = True
 
 class CostumeItemOut(BaseModel):
+    model_id: int
     model: CostumeModel
     location: LocationPublic
     n_items: int
@@ -60,11 +61,20 @@ class ReservationBase(BaseModel):
     return_date: datetime
     pick_up_location_id: int
 
+class CostumeModelAmount(BaseModel):
+    model_id: int
+    quantity: int
+
 class ReservationCreate(ReservationBase):
-    costumes: List[int] = [] #list of costume_id's
+    costumes: List[CostumeModelAmount] = [] #dict of
 
     class Config:
         orm_mode = True
+
+class ReservationModify(ReservationBase):
+    id: int
+    class Config:
+        orm_mode = True;
 
 class ReservationDb(ReservationBase):
     id: int
@@ -75,6 +85,7 @@ class ReservationDb(ReservationBase):
         orm_mode = True
 
 class ReservationOut(ReservationBase):
+    id: int
     date: datetime
     costumes: List[CostumeModel]
     total_cost: float

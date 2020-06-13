@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime, timedelta
 import secrets
 
 from sqlalchemy.orm import Session
@@ -47,7 +48,7 @@ def admin_check(credentials: HTTPBasicCredentials = Depends(security)):
     return credentials.username
 
 @app.post("/create_db")
-def create_database(credentials: HTTPBasicCredentials = Depends(admin_check)):
+def create_database(admin_name: HTTPBasicCredentials = Depends(admin_check)):
     return create_db.populate_new_db()
 
 
@@ -73,6 +74,9 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
 def post_test(reservation: schemas.ReservationCreate, db:Session = Depends(get_db)):
     return crud.create_reservation(db, reservation, username='test')
     
+@app.get("/")
+def main_page():
+    return {"message": "visit /docs for more info"}
 
 @app.get("/welcome")
 def welcome_page():
@@ -81,6 +85,22 @@ def welcome_page():
 @app.post("/new_reservation", status_code=status.HTTP_201_CREATED)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     return crud.create_reservation(db, reservation, username=user.login)
+
+@app.post("/modify_reservation", status_code=status.HTTP_200_OK)
+def modify_reservation(reservation: schemas.ReservationModify, user:models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    try:
+        crud.modify_reservation(db, reservation, user)
+    except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+    return True
+
+@app.post("/system_user/rent_from_reservation/{reservation_id}/{pick_up_code}")
+def rent_from_reservations(reservation_id: int, pick_up_code: int, db: Session = Depends(get_db), \
+                            admin_name: HTTPBasicCredentials = Depends(admin_check)):
+    return crud.rent_from_reservation(db, reservation_id, pick_up_code)
 
 @app.get("/my_reservations", response_model=List[schemas.ReservationOut])
 def read_user_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -99,10 +119,16 @@ def read_user_reservations(user: models.Client = Depends(get_current_user), db: 
 def read_models(db: Session = Depends(get_db)):
     return crud.get_all_models(db)
 
-@app.get("/costumes", response_model=List[schemas.CostumeItem])
-def get_costumes(available_only: bool=False, skip: int=0, limit: int=10, db: Session = Depends(get_db)):
-    if(available_only):
-        return crud.get_available_costume_items(db, skip=skip, limit=limit)
+@app.get("/available_costumes", response_model=List[schemas.CostumeItem])
+def get_available_costumes(db: Session= Depends(get_db), date_from: datetime=datetime.now(), date_to: datetime=datetime.now()+timedelta(days=7), limit: int = 10):
+    costume_items_db = crud.get_available_costume_items(db, date_from, date_to, limit)
+    print(costume_items_db)
+    return costume_items_db
+
+
+@app.get("/system_user/costumes", response_model=List[schemas.CostumeItem])
+def get_all_costumes(skip: int=0, limit: int=10, db: Session = Depends(get_db), admin_name: HTTPBasicCredentials = Depends(admin_check)):
+    
     return crud.get_all_costume_items(db, skip=skip, limit=limit)
 
 #
