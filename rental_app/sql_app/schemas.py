@@ -4,6 +4,7 @@ from datetime import datetime
 from pydantic import BaseModel
 
 class CostumeModel(BaseModel):
+    id: str
     name: str
     size: str
     type_: str
@@ -30,15 +31,6 @@ class LocationPublic(BaseModel):
     class Config:
         orm_mode = True
 
-class CostumeModel(BaseModel):
-    name: str
-    size: str
-    type_: str
-    collection: str
-    price: float
-
-    class Config:
-        orm_mode = True
 
 class CostumeItem(BaseModel):
     id: int
@@ -55,6 +47,13 @@ class CostumeItemOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+class CostumeItemSystem(CostumeItem):
+    location: LocationPublic
+
+    class Config:
+        orm_mode = True
+    
 
 class ReservationBase(BaseModel):
     pick_up_date: datetime
@@ -73,6 +72,7 @@ class ReservationCreate(ReservationBase):
 
 class ReservationModify(ReservationBase):
     id: int
+    cancel: bool
     class Config:
         orm_mode = True;
 

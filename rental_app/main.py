@@ -47,6 +47,11 @@ def admin_check(credentials: HTTPBasicCredentials = Depends(security)):
         )
     return credentials.username
 
+def check_dates_range(date_from: datetime, date_to: datetime):
+    if(date_from < date_to):
+        return True
+    return False
+
 @app.post("/create_db")
 def create_database(admin_name: HTTPBasicCredentials = Depends(admin_check)):
     return create_db.populate_new_db()
@@ -82,12 +87,29 @@ def main_page():
 def welcome_page():
     return {"message": "witaj w wypożyczalni strojów. Zaloguj się aby zmienić rezerwację. Odwiedź /costumes aby zobaczyć dostępne stroje"}
 
+@app.post("/test_new_reservation")
+def create_test_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not(check_dates_range(reservation.pick_up_date, reservation.return_date)):
+        return {"error": "pick_up date is after return date"}
+    return crud.test_create_reservation(db, reservation, username=user.login)
+
 @app.post("/new_reservation", status_code=status.HTTP_201_CREATED)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
-    return crud.create_reservation(db, reservation, username=user.login)
+    try:
+        crud.create_reservation(db, reservation, username=user.login)
+    except Exception as e:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+    return True
+
+
 
 @app.post("/modify_reservation", status_code=status.HTTP_200_OK)
 def modify_reservation(reservation: schemas.ReservationModify, user:models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not(check_dates_range(reservation.pick_up_date, reservation.return_date)):
+        return {"error": "pick_up date is after return date"}
     try:
         crud.modify_reservation(db, reservation, user)
     except Exception as e:
@@ -121,12 +143,14 @@ def read_models(db: Session = Depends(get_db)):
 
 @app.get("/available_costumes", response_model=List[schemas.CostumeItem])
 def get_available_costumes(db: Session= Depends(get_db), date_from: datetime=datetime.now(), date_to: datetime=datetime.now()+timedelta(days=7), limit: int = 10):
+    if not(check_dates_range(date_from, date_to)):
+        return JSONResponse(content={"error": "pick_up date is after return date"})
     costume_items_db = crud.get_available_costume_items(db, date_from, date_to, limit)
     print(costume_items_db)
     return costume_items_db
 
 
-@app.get("/system_user/costumes", response_model=List[schemas.CostumeItem])
+@app.get("/system_user/all_costumes", response_model=List[schemas.CostumeItem])
 def get_all_costumes(skip: int=0, limit: int=10, db: Session = Depends(get_db), admin_name: HTTPBasicCredentials = Depends(admin_check)):
     
     return crud.get_all_costume_items(db, skip=skip, limit=limit)
