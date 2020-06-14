@@ -17,35 +17,76 @@ def create_costume_model(db: Session, model: schemas.CostumeModel):
     db.refresh(db_costume_model)
     return db_costume_model
 
-def test_create_reservation(db: Session, reservation: schemas.ReservationCreate, username: str):
-    available_costume_items = db.query(models.CostumeItem).join(models.Reservation).filter(or_(and_(reservation.pick_up_date < reservation.return_date,\
-                                                                                            reservation.return_date<models.Reservation.pick_up_date), \
-                                                                                            and_(reservation.pick_up_date>models.Reservation.return_date, \
-                                                                                            reservation.return_date>reservation.return_date))) \
-                                                                                        .order_by(models.CostumeItem.id.asc())
 
-    return available_costume_items.all()
+def create_reservation_without_checks(db: Session, reservation: schemas.ReservationCreateTest, username: str):
+    total_res = len(db.query(models.Reservation).all())
+    reservation.pick_up_location_id = 1
+    reservation_db_model = schemas.ReservationDb(**reservation.dict(), id=total_res+1, \
+        date=datetime.now(), client_id=get_client_id_from_username(db,username))
+
+    #selected_costumes = db.query(models.CostumeItem).with_entities(models.CostumeItem, models.CostumeModel). \
+    #                                                                join(models.CostumeModel).filter(models.CostumeModel.id.\
+    #                                                                    in_(reservation.costumes)).all()
+    selected_costumes = db.query(models.CostumeItem).filter(models.CostumeItem.id.in_(reservation.costume_ids)).all()
+    db_reservation = models.Reservation(**reservation_db_model.dict())
+    
+    #selcted_costume = [item, model]
+
+    db.add(db_reservation)
+
+    for costume in selected_costumes:
+        costume.reservation = db_reservation    
+    db.commit()
+    return db_reservation
 
 def create_reservation(db: Session, reservation: schemas.ReservationCreate, username: str):
 
     total_res = len(db.query(models.Reservation).all())
+    date_from = reservation.pick_up_date
+    date_to = reservation.return_date
+
+    available_items = get_available_costumes_between_dates(db, reservation.pick_up_date, reservation.return_date)
+    print(str([x.__dict__ for x in available_items.all()]))
 
     #check:
     #   -> if wanted costume_model exist
     #   -> if costume_items quantity is available
     #   -> 
+    models_count = db.query(models.CostumeModel.id, func.count(models.CostumeModel.id)).join(models.CostumeItem).filter(and_(models.CostumeModel.id.in_(\
+                                                [c.model_id for c in reservation.costumes]), )).group_by(models.CostumeModel.id).order_by(models.CostumeModel.id.asc()).all()
+    
+    if(len(models_count) != len(reservation.costumes)):
+        raise Exception("Given model_id doesn't exist")
+
+
+    wanted_costume_counts = {}
+    for wanted in models_count:
+        wanted_costume_counts[wanted[0]] = wanted[1]
+
+    for wanted_costume in reservation.costumes:
+        if(wanted_costume_counts[wanted_costume.model_id] < wanted_costume.quantity):
+            error_msg = str(f"needed {wanted_costume.quantity}, of model_id ({wanted_costume.model_id}) but we got only {wanted_costume_counts[wanted_costume.model_id]} costume of that model")
+            raise Exception(error_msg)
+
+
+
+    # ALL CHECKS DONE
+    # WE HAVE ALL NECESSARY STUFF TO CREATE RESERVATIONS
+    return models_count
+
+
 
     # get list of all wanted models
     wanted_models = db.query(models.CostumeModel).filter(models.CostumeModel.id.in_([c.model_id for c in reservation.costumes])).all()
-    if(len(wanted_models) != len(reservation.costumes)):
-        raise Exception("Given model_id doesn't exist")
+
 
 
     # len(models)==len(costumes) -> robimy joina
     selected_costumes = db.query(models.CostumeItem).with_entities(models.CostumeItem, models.CostumeModel). \
                                                                     join(models.CostumeModel).filter(models.CostumeModel.id.\
                                                                         in_([c.model_id for c in reservation.costumes])).all()
-    #check if we habe enough items on magazine
+    print(f'selected_costumes: {selected_costumes}')
+    #check if we have enough items on magazine
     if(len(selected_costumes) < len(wanted_models)):
         #we don't have enough items, and we have o order them for give reservation
         #TODO
@@ -56,16 +97,15 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate, user
         date=datetime.now(), client_id=get_client_id_from_username(db,username))
 
     db_reservation = models.Reservation(**reservation_db_model.dict())
+    print(selected_costumes)
+    
     #selcted_costume = [item, model]
-    #for costume_info in selected_costumes:
-        
-    #db.add(db_reservation)
-    #
-    #for costume in selected_costumes:
-    #    costume.reservation = db_reservation
-    #    #costume.location = None
-    #db.commit()
-    return selected_costumes
+
+    for costume in selected_costumes[0]:
+        costume.reservation = db_reservation    
+    db.add(db_reservation)
+    db.commit()
+    return db_reservation
 
 def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, client: models.Client):
     reservation_old = db.query(models.Reservation).filter(models.Reservation.id == reservation_new.id)
@@ -117,14 +157,15 @@ def get_all_models(db: Session):
 
 #DateRangesOverlap = max(start1, start2) < min(end1, end2)
 
-def get_available_costume_items(db: Session, date_from: datetime, date_to: datetime, limit: int):
-    available_costumes = db.query(models.CostumeItem).join(models.Reservation).filter(or_(date_to < models.Reservation.pick_up_date, date_from > models.Reservation.return_date))
+def get_available_costumes_between_dates(db: Session, date_from: datetime, date_to: datetime):
+    return db.query(models.CostumeItem).join(models.Reservation, isouter=True).join(models.CostumeRental, models.CostumeRental.id==models.CostumeItem.rental_id, isouter=True). \
+                filter(or_(or_(date_to < models.Reservation.pick_up_date, date_from > models.Reservation.return_date), \
+                and_(models.CostumeItem.reservation_id==None, or_(date_to < models.CostumeRental.start_date, date_from > models.CostumeRental.end_date))))
 
-    #costume_items = db.query(models.CostumeItem).join(models.Reservation).filter(or_(and_(date_from < date_to, date_to<models.Reservation.pick_up_date), \
-    #                                                                                and_(date_from>models.Reservation.return_date, date_from < date_to))) \
-    #                                                                                .order_by(models.CostumeItem.id.asc()).limit(limit)
-    
-    return available_costumes.order_by(models.CostumeItem.id.asc()).limit(limit).all() # db.query(costume_items).with_entities(func.count(costume_items.)).group_by(costume_items.column).all()
+def get_available_costume_items(db: Session, date_from: datetime, date_to: datetime, limit: int):
+    available_ = get_available_costumes_between_dates(db, date_from, date_to)
+    print(str(available_))
+    return available_.order_by(models.CostumeItem.id.asc()).limit(limit).all() # db.query(costume_items).with_entities(func.count(costume_items.)).group_by(costume_items.column).all()
 
 
 

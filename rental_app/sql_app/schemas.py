@@ -64,6 +64,11 @@ class CostumeModelAmount(BaseModel):
     model_id: int
     quantity: int
 
+class ReservationCreateTest(ReservationBase):
+    costume_ids: List[int] = []
+    class Config:
+        orm_mode=True
+
 class ReservationCreate(ReservationBase):
     costumes: List[CostumeModelAmount] = [] #dict of
 

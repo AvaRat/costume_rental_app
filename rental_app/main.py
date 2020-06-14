@@ -52,6 +52,15 @@ def check_dates_range(date_from: datetime, date_to: datetime):
         return True
     return False
 
+def get_reservation_out(reservation: schemas.ReservationDb, db: Session) -> schemas.ReservationOut:
+    costumes = crud.get_costume_models_from_reservation(db, reservation.id)
+    reservations_prices = [costume.price for costume in costumes]
+    total_cost = sum(reservations_prices)
+
+    return schemas.ReservationOut(id=reservation.id, date=reservation.date, pick_up_date=reservation.pick_up_date, return_date=reservation.return_date, \
+        pick_up_location_id=reservation.pick_up_location_id, costumes=crud.get_costume_models_from_reservation(db, reservation.id),\
+        total_cost=total_cost)
+
 @app.post("/create_db")
 def create_database(admin_name: HTTPBasicCredentials = Depends(admin_check)):
     return create_db.populate_new_db()
@@ -75,9 +84,9 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
         )
     return user
 
-@app.post("/test_new_resrvation")
-def post_test(reservation: schemas.ReservationCreate, db:Session = Depends(get_db)):
-    return crud.create_reservation(db, reservation, username='test')
+@app.post("/test_new_reservation")
+def post_test(reservation: schemas.ReservationCreateTest, db:Session = Depends(get_db)):
+    return crud.create_reservation_without_checks(db, reservation, username='test')
     
 @app.get("/")
 def main_page():
@@ -87,22 +96,22 @@ def main_page():
 def welcome_page():
     return {"message": "witaj w wypożyczalni strojów. Zaloguj się aby zmienić rezerwację. Odwiedź /costumes aby zobaczyć dostępne stroje"}
 
-@app.post("/test_new_reservation")
-def create_test_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
-    if not(check_dates_range(reservation.pick_up_date, reservation.return_date)):
-        return {"error": "pick_up date is after return date"}
-    return crud.test_create_reservation(db, reservation, username=user.login)
+#@app.post("/test_new_reservation")
+#def create_test_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+#    if not(check_dates_range(reservation.pick_up_date, reservation.return_date)):
+#        return {"error": "pick_up date is after return date"}
+#    return crud.test_create_reservation(db, reservation, username=user.login)
 
 @app.post("/new_reservation", status_code=status.HTTP_201_CREATED)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        crud.create_reservation(db, reservation, username=user.login)
+        return crud.create_reservation(db, reservation, username=user.login)
     except Exception as e:
         raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
             )
-    return True
+    return get_reservation_out(new_reservation, db)
 
 
 
@@ -127,14 +136,9 @@ def rent_from_reservations(reservation_id: int, pick_up_code: int, db: Session =
 @app.get("/my_reservations", response_model=List[schemas.ReservationOut])
 def read_user_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     reservations_db = crud.get_user_reservations(db, user.id)
-    models = []
+    models = List[schemas.ReservationOut]
     for res in reservations_db:
-        costumes = crud.get_costume_models_from_reservation(db, res.id)
-        reservations_prices = [costume.price for costume in costumes]
-        total_cost = sum(reservations_prices)
-        models.append(schemas.ReservationOut(date=res.date, pick_up_date=res.pick_up_date, return_date=res.return_date, \
-        pick_up_location_id=res.pick_up_location_id, costumes=crud.get_costume_models_from_reservation(db, res.id),\
-        total_cost=total_cost))
+        models.append(get_reservation_out(res, db))
     return models
 
 @app.get("/models", response_model=List[schemas.CostumeModel])

@@ -1,0 +1,21 @@
+SELECT "Costume_items".costume_id AS "Costume_items_costume_id", "Costume_items".model_id AS "Costume_items_model_id", "Costume_items".location_id AS "Costume_items_location_id", "Costume_items".rental_id AS "Costume_items_rental_id", "Costume_items".reservation_id AS "Costume_items_reservation_id" 
+FROM "Costume_items" 
+LEFT OUTER JOIN "Reservations" ON "Reservations".reservation_id = "Costume_items".reservation_id 
+LEFT OUTER JOIN "Costume_rentals" ON "Reservations".reservation_id = "Costume_rentals".reservation_id 
+WHERE "Reservations".pick_up_date > %(pick_up_date_1)s 
+    OR "Reservations".return_date < %(return_date_1)s 
+    OR "Costume_items".reservation_id IS NULL 
+    AND ("Costume_rentals".start_date > %(start_date_1)s 
+    OR "Costume_rentals".end_date < %(end_date_1)s)
+
+
+
+
+
+
+SELECT "Costume_items".costume_id AS "Costume_items_costume_id", "Costume_items".model_id AS "Costume_items_model_id", "Costume_items".location_id AS "Costume_items_location_id", "Costume_items".rental_id AS "Costume_items_rental_id", "Costume_items".reservation_id AS "Costume_items_reservation_id" 
+FROM "Costume_items" 
+LEFT OUTER JOIN "Reservations" ON "Reservations".reservation_id = "Costume_items".reservation_id 
+LEFT OUTER JOIN "Costume_rentals" ON "Costume_rentals".rental_id = "Costume_items".rental_id 
+
+WHERE "Reservations".pick_up_date > %(pick_up_date_1)s OR "Reservations".return_date < %(return_date_1)s OR "Costume_items".reservation_id IS NULL AND ("Costume_rentals".start_date > %(start_date_1)s OR "Costume_rentals".end_date < %(end_date_1)s)
