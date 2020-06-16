@@ -1,7 +1,5 @@
-rental_env/
 rental_app/__pycache__/
 rental_app/.vscode/
 .env
 .venv
-env/
-venv/
+env/*
