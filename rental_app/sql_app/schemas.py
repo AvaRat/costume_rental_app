@@ -69,8 +69,7 @@ class CostumeItem(BaseModel):
 
 class CostumeItemOut(BaseModel):
     model: CostumeModelOut
-    location: LocationPublic
-    n_items: int
+    quantity: int
 
     class Config:
         orm_mode = True

@@ -175,8 +175,11 @@ def get_items_from_reservation(db: Session, reservation_id: int) -> List[models.
     res = db.query(models.Reservation).get(reservation_id)
     return res.costumes
 
-def get_model_quantity(db: Session, reservation: models.Reservation, costume: models.CostumeItem):
-    return len(db.query(models.CostumeItem).filter_by(model_id=costume.model_id, reservation_id=reservation.id).all())
+def get_model_quantities_in_reservation(db: Session, reservation: models.Reservation):
+    quantities_query = db.query(models.CostumeItem.model_id.label('model_id'), func.count(models.CostumeItem.model_id).label('quantity')). \
+                            filter(models.CostumeItem.reservation_id==reservation.id).group_by(models.CostumeItem.model_id).subquery()
+    r = db.query(models.CostumeModel).with_entities(models.CostumeModel, quantities_query.c.quantity).join(quantities_query, quantities_query.c.model_id==models.CostumeModel.id).all()
+    return r
 
 def get_models_from_reservation(db:Session, reservation: models.Reservation) -> List[models.CostumeModel]:
     return db.query(models.CostumeItem).filter_by(reservation_id=reservation.id).all()

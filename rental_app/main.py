@@ -56,17 +56,16 @@ def get_reservation_out(reservation: models.Reservation, db: Session) -> schemas
     costumes = crud.get_items_from_reservation(db, reservation.id)
     reservations_prices = [costume.model.price for costume in costumes]
     total_cost = sum(reservations_prices)
-    #get unique model_id's from all reservaed costumes
-    models_list = set([c.model_id for c in reservation.costumes])
-    for c in models_list:
-        print(crud.get_model_quantity(db, reservation, c))
+    models_quanity =  crud.get_model_quantities_in_reservation(db, reservation)
 
+    print(models_quanity)
 
     return schemas.ReservationOut(reservation_code=reservation.id, date=reservation.date, pick_up_date=reservation.pick_up_date, \
         return_date=reservation.return_date, pick_up_address=reservation.pick_up_location, \
-        costumes=[schemas.CostumeItemOut(n_items=len(costumes), location=costume.location, \
-            model=schemas.CostumeModelOut(**costume.model.__dict__, model_id=costume.model_id)) for costume in costumes], \
+        costumes=[schemas.CostumeItemOut(quantity=model[1], \
+            model=schemas.CostumeModelOut(**model[0].__dict__, model_id=model[0].id)) for model in models_quanity], \
         total_cost=total_cost)
+
 
 @app.post("/create_db")
 def create_database(admin_name: HTTPBasicCredentials = Depends(admin_check)):
