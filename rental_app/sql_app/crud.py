@@ -4,7 +4,7 @@ from sqlalchemy import asc, or_, and_, func, not_
 from sqlalchemy.sql import text, subquery
 import uuid
 from . import models, schemas
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 
 
 #get_available = text(""" """)
@@ -22,7 +22,7 @@ def create_reservation_without_checks(db: Session, reservation: schemas.Reservat
     total_res = len(db.query(models.Reservation).all())
     reservation.pick_up_location_id = 1
     reservation_db_model = schemas.ReservationDb(**reservation.dict(), id=total_res+1, \
-        date=datetime.now(), client_id=get_client_id_from_username(db,username))
+        date=date.today(), client_id=get_client_id_from_username(db,username))
 
     #selected_costumes = db.query(models.CostumeItem).with_entities(models.CostumeItem, models.CostumeModel). \
     #                                                                join(models.CostumeModel).filter(models.CostumeModel.id.\
@@ -71,7 +71,7 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate, user
     # ALL CHECKS DONE
     # WE HAVE ALL NECESSARY STUFF TO CREATE RESERVATIONS
     reservation_db_model = schemas.ReservationDb(**reservation.dict(), id=total_res+1, \
-        date=datetime.now(), client_id=get_client_id_from_username(db,username))
+        date=date.today(), client_id=get_client_id_from_username(db,username))
 
     db_reservation = models.Reservation(**reservation_db_model.dict())
 
@@ -97,11 +97,14 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate, user
     return db_reservation
 
 def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, client: models.Client):
-    reservation_old = db.query(models.Reservation).filter(models.Reservation.id == reservation_new.id)
-    if not(reservation_old.first().client_id == client.id):
-        raise  Exception("This reservation belongs to other user")
-    if(reservation_old.first().pick_up_date < datetime.now() or reservation_old.return_date < datetime.now()):
-        raise Exception("Chosen date is in the past")
+    reservation_old = db.query(models.Reservation).filter(models.Reservation.id == reservation_new.id).first()
+    if(reservation_old==None):
+        raise RuntimeError("No reservation with given ID")
+    # check if given reservation_id exist
+    if not(reservation_old.client_id == client.id):
+        raise  RuntimeError("This reservation belongs to other user")
+    if(reservation_new.pick_up_date < date.today() or reservation_new.return_date < date.today()):
+        raise RuntimeError("Chosen date is in the past")
 
 
     if(reservation_new.cancel):
@@ -110,11 +113,12 @@ def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, 
                 costume.reservation_id = None
             msg_info = "reservation_cancelled"
     else:
+        #TODO check if costumes are available during chosen dates
         reservation_old.pick_up_date = reservation_new.pick_up_date
         reservation_old.return_date = reservation_new.return_date
         msg_info = "succesfully modified reservation"
     db.commit()
-    return {"message": msg_info}
+    return msg_info
 
 
 def rent_from_reservation(db: Session, reservation_id: int, pick_up_code: int):
@@ -122,7 +126,7 @@ def rent_from_reservation(db: Session, reservation_id: int, pick_up_code: int):
     reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
     if(reservation==None):
         raise Exception("given reservation doesn't exist")
-    new_rental = models.CostumeRental(id=total_rentals+1, start_date=datetime.now(), end_date=reservation.return_date, \
+    new_rental = models.CostumeRental(id=total_rentals+1, start_date=date.today(), end_date=reservation.return_date, \
                                     reservation_id=reservation_id)
     db.add(new_rental)
     for costume in reservation.costumes:
@@ -146,16 +150,16 @@ def get_all_models(db: Session) -> List[models.CostumeModel]:
 
 #DateRangesOverlap = max(start1, start2) < min(end1, end2)
 
-def get_available_costumes_between_dates(db: Session, date_from: datetime, date_to: datetime):
+def get_available_costumes_between_dates(db: Session, date_from: date, date_to: date):
     return db.query(models.CostumeItem).join(models.Reservation, isouter=True).join(models.CostumeRental, models.CostumeRental.id==models.CostumeItem.rental_id, isouter=True). \
                 filter(or_(or_(or_(date_to < models.Reservation.pick_up_date, date_from > models.Reservation.return_date), models.CostumeItem.reservation_id==None), \
                         date_to < models.CostumeRental.start_date, date_from > models.CostumeRental.end_date))
 
-def get_available_costume_items(db: Session, date_from: datetime, date_to: datetime, limit: int):
-    available_ = get_available_costumes_between_dates(db, date_from, date_to)
-    print(str(available_))
-    return available_.order_by(models.CostumeItem.id.asc()).limit(limit).all() # db.query(costume_items).with_entities(func.count(costume_items.)).group_by(costume_items.column).all()
+def get_available_costume_models_with_quantity(db: Session, date_from: date, date_to: date, limit: int):
+    available_costumes = get_available_costumes_between_dates(db, date_from, date_to)
+    quantities_query = available_costumes.with_entities(func.count(models.CostumeItem.model_id).label('quantity'), models.CostumeItem.model_id).group_by(models.CostumeItem.model_id).subquery()
 
+    return db.query(models.CostumeModel).with_entities(models.CostumeModel, quantities_query.c.quantity).join(quantities_query, quantities_query.c.model_id==models.CostumeModel.id).all()
 
 
 def get_all_costume_items(db: Session, skip: int = 0, limit: int = 10):
@@ -175,11 +179,19 @@ def get_items_from_reservation(db: Session, reservation_id: int) -> List[models.
     res = db.query(models.Reservation).get(reservation_id)
     return res.costumes
 
+def get_all_models_quantities(db: Session, items_subquery=models.CostumeItem,  filter_criteria=None):
+    if not(filter_criteria):
+        quantities_query = db.query(items_subquery.model_id.label('model_id'), func.count(models.CostumeItem.model_id).label('quantity')).group_by(models.CostumeItem.model_id).subquery()
+    else:
+        quantities_query = db.query(items_subquery.model_id.label('model_id'), func.count(models.CostumeItem.model_id).label('quantity')).filter_by(**filter_criteria).group_by(models.CostumeItem.model_id).subquery()
+
+    return db.query(models.CostumeModel).with_entities(models.CostumeModel, quantities_query.c.quantity).join(quantities_query, quantities_query.c.model_id==models.CostumeModel.id)
+
+
 def get_model_quantities_in_reservation(db: Session, reservation: models.Reservation):
-    quantities_query = db.query(models.CostumeItem.model_id.label('model_id'), func.count(models.CostumeItem.model_id).label('quantity')). \
-                            filter(models.CostumeItem.reservation_id==reservation.id).group_by(models.CostumeItem.model_id).subquery()
-    r = db.query(models.CostumeModel).with_entities(models.CostumeModel, quantities_query.c.quantity).join(quantities_query, quantities_query.c.model_id==models.CostumeModel.id).all()
-    return r
+    #quantities_query = db.query(models.CostumeItem.model_id.label('model_id'), func.count(models.CostumeItem.model_id).label('quantity')).filter_by(reservation_id=reservation.id).group_by(models.CostumeItem.model_id).subquery()
+    return get_all_models_quantities(db, filter_criteria={'reservation_id':reservation.id}).all()
+
 
 def get_models_from_reservation(db:Session, reservation: models.Reservation) -> List[models.CostumeModel]:
     return db.query(models.CostumeItem).filter_by(reservation_id=reservation.id).all()

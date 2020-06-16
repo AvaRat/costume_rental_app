@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, DateTime
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Float, Date
 from sqlalchemy.orm import relationship
 
 
@@ -59,8 +59,8 @@ class CostumeRental(Base):
     __tablename__ = "Costume_rentals"
 
     id = Column("rental_id", Integer, primary_key=True)
-    start_date = Column(DateTime, nullable=False)
-    end_date = Column(DateTime, nullable=False)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
 
     #subscription_id = relationship("subscription_id", back_populates="Subscriptions")
     reservation_id = Column(Integer, ForeignKey("Reservations.reservation_id"), nullable=True)
@@ -71,9 +71,9 @@ class CostumeRental(Base):
 class Reservation(Base):
     __tablename__="Reservations"
     id = Column("reservation_id", Integer, primary_key=True)
-    date = Column("reservation_date", DateTime, nullable=False)
-    pick_up_date = Column(DateTime, nullable=False)
-    return_date = Column(DateTime, nullable=False)
+    date = Column("reservation_date", Date, nullable=False)
+    pick_up_date = Column(Date, nullable=False)
+    return_date = Column(Date, nullable=False)
 
     client_id = Column(ForeignKey("Clients.client_id"), nullable=False)
     pick_up_location_id = Column(ForeignKey("Locations.location_id"), nullable=False)

@@ -1,5 +1,5 @@
 from typing import List
-from datetime import datetime, timedelta
+from datetime import date, timedelta
 import secrets
 
 from sqlalchemy.orm import Session
@@ -47,7 +47,7 @@ def admin_check(credentials: HTTPBasicCredentials = Depends(security)):
         )
     return credentials.username
 
-def check_dates_range(date_from: datetime, date_to: datetime):
+def check_dates_range(date_from: date, date_to: date):
     if(date_from < date_to):
         return True
     return False
@@ -102,6 +102,10 @@ def main_page():
 def welcome_page():
     return {"message": "witaj w wypożyczalni strojów. Zaloguj się aby zmienić rezerwację. Odwiedź /costumes aby zobaczyć dostępne stroje"}
 
+@app.post("/create_user")
+def create_user(user: schemas.ClientCreate, db: Session=Depends(get_db)):
+    crud.create_client(db, user)
+    return {"message": "succesfully created account"}
 
 @app.get("/system_user/all_users", response_model=List[schemas.ClientBase])
 def get_all_user_details(db: Session = Depends(get_db), admin: HTTPBasicCredentials = Depends(admin_check)):
@@ -130,15 +134,15 @@ def create_reservation(reservation: schemas.ReservationCreate, user: models.Clie
 @app.post("/modify_reservation", status_code=status.HTTP_200_OK)
 def modify_reservation(reservation: schemas.ReservationModify, user:models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     if not(check_dates_range(reservation.pick_up_date, reservation.return_date)):
-        return {"error": "pick_up date is after return date"}
+        return JSONResponse(content={"error": "pick_up date is after return date"})
     try:
-        crud.modify_reservation(db, reservation, user)
-    except Exception as e:
+        msg = crud.modify_reservation(db, reservation, user)
+    except RuntimeError as e:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
             )
-    return True
+    return {"message":msg}
 
 @app.post("/system_user/rent_from_reservation/{reservation_id}/{pick_up_code}")
 def rent_from_reservations(reservation_id: int, pick_up_code: int, db: Session = Depends(get_db), \
@@ -158,16 +162,16 @@ def get_all_models(db: Session = Depends(get_db)):
     all_models = crud.get_all_models(db)
     return [schemas.CostumeModelOut(**model.__dict__, model_id=model.id) for model in all_models]
 
-@app.get("/available_costumes", response_model=List[schemas.CostumeItem])
-def get_available_costumes(db: Session= Depends(get_db), date_from: datetime=datetime.now(), date_to: datetime=datetime.now()+timedelta(days=7), limit: int = 10):
+@app.get("/available_costumes", response_model=List[schemas.CostumeItemOut])
+def get_available_costumes(db: Session= Depends(get_db), date_from: date=date.today(), date_to: date=date.today()+timedelta(days=7), limit: int = 10):
     if not(check_dates_range(date_from, date_to)):
         return JSONResponse(content={"error": "pick_up date is after return date"})
-    costume_items_db = crud.get_available_costume_items(db, date_from, date_to, limit)
-    print(costume_items_db)
-    return costume_items_db
+    available_models= crud.get_available_costume_models_with_quantity(db, date_from, date_to, limit)
+    #print(costume_items_db)
+    return [schemas.CostumeItemOut(model=schemas.CostumeModelOut(**model_info[0].__dict__, model_id=model_info[0].id), quantity=model_info[1]) for model_info in available_models]
 
 
-@app.get("/system_user/all_costumes", response_model=List[schemas.CostumeItem])
+@app.get("/system_user/all_costumes", response_model=List[schemas.CostumeItemSystem])
 def get_all_costumes(skip: int=0, limit: int=10, db: Session = Depends(get_db), admin_name: HTTPBasicCredentials = Depends(admin_check)):
     
     return crud.get_all_costume_items(db, skip=skip, limit=limit)
