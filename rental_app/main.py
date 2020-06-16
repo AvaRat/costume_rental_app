@@ -52,13 +52,20 @@ def check_dates_range(date_from: datetime, date_to: datetime):
         return True
     return False
 
-def get_reservation_out(reservation: schemas.ReservationDb, db: Session) -> schemas.ReservationOut:
-    costumes = crud.get_costume_models_from_reservation(db, reservation.id)
-    reservations_prices = [costume.price for costume in costumes]
+def get_reservation_out(reservation: models.Reservation, db: Session) -> schemas.ReservationOut:
+    costumes = crud.get_items_from_reservation(db, reservation.id)
+    reservations_prices = [costume.model.price for costume in costumes]
     total_cost = sum(reservations_prices)
+    #get unique model_id's from all reservaed costumes
+    models_list = set([c.model_id for c in reservation.costumes])
+    for c in models_list:
+        print(crud.get_model_quantity(db, reservation, c))
 
-    return schemas.ReservationOut(id=reservation.id, date=reservation.date, pick_up_date=reservation.pick_up_date, return_date=reservation.return_date, \
-        pick_up_location_id=reservation.pick_up_location_id, costumes=crud.get_costume_models_from_reservation(db, reservation.id),\
+
+    return schemas.ReservationOut(reservation_code=reservation.id, date=reservation.date, pick_up_date=reservation.pick_up_date, \
+        return_date=reservation.return_date, pick_up_address=reservation.pick_up_location, \
+        costumes=[schemas.CostumeItemOut(n_items=len(costumes), location=costume.location, \
+            model=schemas.CostumeModelOut(**costume.model.__dict__, model_id=costume.model_id)) for costume in costumes], \
         total_cost=total_cost)
 
 @app.post("/create_db")
@@ -96,17 +103,23 @@ def main_page():
 def welcome_page():
     return {"message": "witaj w wypożyczalni strojów. Zaloguj się aby zmienić rezerwację. Odwiedź /costumes aby zobaczyć dostępne stroje"}
 
+
+@app.get("/system_user/all_users", response_model=List[schemas.ClientBase])
+def get_all_user_details(db: Session = Depends(get_db), admin: HTTPBasicCredentials = Depends(admin_check)):
+    return [schemas.ClientBase(**c.__dict__, nr_reservations= len(crud.get_user_reservations(db,c.id))) for c in crud.get_all_users(db)]
+
 #@app.post("/test_new_reservation")
 #def create_test_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
 #    if not(check_dates_range(reservation.pick_up_date, reservation.return_date)):
 #        return {"error": "pick_up date is after return date"}
 #    return crud.test_create_reservation(db, reservation, username=user.login)
 
-@app.post("/new_reservation", status_code=status.HTTP_201_CREATED)
+@app.post("/new_reservation", status_code=status.HTTP_201_CREATED, response_model=schemas.ReservationOut)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    #return crud.create_reservation(db, reservation, username=user.login)
     try:
-        return crud.create_reservation(db, reservation, username=user.login)
-    except Exception as e:
+        new_reservation = crud.create_reservation(db, reservation, username=user.login)
+    except RuntimeError as e:
         raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=str(e),
@@ -134,16 +147,17 @@ def rent_from_reservations(reservation_id: int, pick_up_code: int, db: Session =
     return crud.rent_from_reservation(db, reservation_id, pick_up_code)
 
 @app.get("/my_reservations", response_model=List[schemas.ReservationOut])
-def read_user_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_user_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     reservations_db = crud.get_user_reservations(db, user.id)
-    models = List[schemas.ReservationOut]
+    models = []
     for res in reservations_db:
         models.append(get_reservation_out(res, db))
     return models
 
-@app.get("/models", response_model=List[schemas.CostumeModel])
-def read_models(db: Session = Depends(get_db)):
-    return crud.get_all_models(db)
+@app.get("/models", response_model=List[schemas.CostumeModelOut])
+def get_all_models(db: Session = Depends(get_db)):
+    all_models = crud.get_all_models(db)
+    return [schemas.CostumeModelOut(**model.__dict__, model_id=model.id) for model in all_models]
 
 @app.get("/available_costumes", response_model=List[schemas.CostumeItem])
 def get_available_costumes(db: Session= Depends(get_db), date_from: datetime=datetime.now(), date_to: datetime=datetime.now()+timedelta(days=7), limit: int = 10):
