@@ -3,14 +3,30 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-class CostumeModel(BaseModel):
-    id: str
+class CostumeModelBase(BaseModel):
     name: str
     size: str
-    type_: str
+    type: str
     collection: str
-    price: float
     
+    class Config:
+        orm_mode = True
+
+class CostumeModelCreate(CostumeModelBase):
+
+    class Config:
+        orm_mode = True
+
+class CostumeModelDb(CostumeModelBase):
+    id: int
+    price: float
+
+    class Config:
+        orm_mode = True
+
+class CostumeModelOut(CostumeModelBase):
+    model_id:int
+
     class Config:
         orm_mode = True
 
@@ -20,6 +36,18 @@ class ClientCreate(BaseModel):
     email: str
     login: str
     password: str
+
+    class Config:
+        orm_mode = True
+
+class ClientBase(BaseModel):
+    id: int
+    address:str
+    phone_nr: str
+    email: str
+    login: str
+    password: str
+    nr_reservations: int
 
     class Config:
         orm_mode = True
@@ -34,14 +62,13 @@ class LocationPublic(BaseModel):
 
 class CostumeItem(BaseModel):
     id: int
-    model: CostumeModel
+    model: CostumeModelDb
 
     class Config:
         orm_mode = True
 
 class CostumeItemOut(BaseModel):
-    model_id: int
-    model: CostumeModel
+    model: CostumeModelOut
     location: LocationPublic
     n_items: int
 
@@ -89,10 +116,13 @@ class ReservationDb(ReservationBase):
     class Config:
         orm_mode = True
 
-class ReservationOut(ReservationBase):
-    id: int
+class ReservationOut(BaseModel):
+    reservation_code: int
     date: datetime
-    costumes: List[CostumeModel]
+    pick_up_date: datetime
+    return_date: datetime
+    pick_up_address: LocationPublic
+    costumes: List[CostumeItemOut]
     total_cost: float
 
     class Config:

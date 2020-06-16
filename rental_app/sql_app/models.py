@@ -49,7 +49,7 @@ class CostumeModel(Base):
     id = Column("model_id", Integer, primary_key=True)
     name = Column(String, nullable=False)
     size = Column(String, nullable=False)
-    type_ = Column("type_name", String, nullable=False)
+    type = Column("type_name", String, nullable=False)
     collection = Column("collection_name", String, nullable=False)
     price = Column(Float(precision=8), nullable=False)
 
