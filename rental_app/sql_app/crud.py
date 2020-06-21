@@ -71,7 +71,7 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate, user
     # ALL CHECKS DONE
     # WE HAVE ALL NECESSARY STUFF TO CREATE RESERVATIONS
     reservation_db_model = schemas.ReservationDb(**reservation.dict(), id=total_res+1, \
-        date=date.today(), client_id=get_client_id_from_username(db,username))
+        date=date.today(), client_id=get_client_id_from_username(db,username), valid=True)
 
     db_reservation = models.Reservation(**reservation_db_model.dict())
 
@@ -96,6 +96,18 @@ def create_reservation(db: Session, reservation: schemas.ReservationCreate, user
     db.commit()
     return db_reservation
 
+def cancel_reservation(db: Session, reservation_id: int) -> bool:
+    res = db.query(models.Reservation).get(reservation_id)
+    if(res.valid==False):
+        return False
+
+    for item in res.items:
+        item.reservation_id=None
+    db.delete(res)
+    db.commit()
+    return True
+
+
 def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, client: models.Client):
     reservation_old = db.query(models.Reservation).filter(models.Reservation.id == reservation_new.id).first()
     if(reservation_old==None):
@@ -105,7 +117,8 @@ def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, 
         raise  RuntimeError("This reservation belongs to other user")
     if(reservation_new.pick_up_date < date.today() or reservation_new.return_date < date.today()):
         raise RuntimeError("Chosen date is in the past")
-
+    if(reservation_old.valid==False):
+        raise RuntimeError("This reservation is not valid anymore")
 
     if(reservation_new.cancel):
             db.query(models.Reservation).filter_by(id=reservation_new.id).delete()
@@ -121,20 +134,37 @@ def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, 
     return msg_info
 
 
-def rent_from_reservation(db: Session, reservation_id: int, pick_up_code: int):
+def rent_from_reservation(db: Session, reservation_id: int, email: str):
+    user = db.query(models.Client).filter(models.Client.email==email).first()
+    error_msg=None
+    if not(user):
+        raise RuntimeError("no user with given email")
+
+    reservation = db.query(models.Reservation).filter(and_(models.Reservation.client_id==user.id, models.Reservation.id==reservation_id)).first()
+    if not(reservation):
+        raise RuntimeError("no reservation for this email and id")
+    if not(reservation.valid):
+        raise RuntimeError("this reservation has already been rented")
+
     total_rentals = len(db.query(models.CostumeRental).all())
-    reservation = db.query(models.Reservation).filter(models.Reservation.id == reservation_id).first()
-    if(reservation==None):
-        raise Exception("given reservation doesn't exist")
+
     new_rental = models.CostumeRental(id=total_rentals+1, start_date=date.today(), end_date=reservation.return_date, \
                                     reservation_id=reservation_id)
-    db.add(new_rental)
-    for costume in reservation.costumes:
+    print(len(reservation.items))
+    items = [i for i in reservation.items]
+
+#    items = reservation.items
+    for costume in items:
+        print(costume.__dict__)
+        print(f'n items: {len(items)}')
         costume.reservation = None
         costume.rental = new_rental
-
+    
+    db.add(new_rental)
+    reservation.valid=False
     db.commit()
-    return True
+    return new_rental
+
 
 def get_user_from_username(db: Session, username: str):
     return db.query(models.Client).filter(models.Client.login == username).first()
@@ -169,7 +199,12 @@ def get_client(db: Session, email: str):
     return db.query(models.Client).filter(models.Client.email == email).first()
 
 def get_user_reservations(db:Session, user_id: int) -> List[models.Reservation]:
-    return db.query(models.Reservation).filter(models.Reservation.client_id == user_id).order_by(models.Reservation.date.asc()).all()
+    return db.query(models.Reservation).filter_by(client_id=user_id, valid=True).order_by(models.Reservation.date.asc())
+
+def get_user_rentals(db:Session, user: models.Client) -> List[models.CostumeModel]:
+    return db.query(models.CostumeRental).join(models.Reservation).filter_by(client_id=user.id).all()
+
+
 
 def get_costume_models_from_reservation(db: Session, reservation_id: int) -> List[models.CostumeModel]:
     res = db.query(models.Reservation).get(reservation_id)
@@ -178,6 +213,7 @@ def get_costume_models_from_reservation(db: Session, reservation_id: int) -> Lis
 def get_items_from_reservation(db: Session, reservation_id: int) -> List[models.CostumeItem]:
     res = db.query(models.Reservation).get(reservation_id)
     return res.costumes
+
 
 def get_all_models_quantities(db: Session, items_subquery=models.CostumeItem,  filter_criteria=None):
     if not(filter_criteria):

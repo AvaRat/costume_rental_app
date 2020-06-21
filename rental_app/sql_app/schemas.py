@@ -118,6 +118,7 @@ class ReservationDb(ReservationBase):
     id: int
     date: date
     client_id: int
+    valid: bool
     
     class Config:
         orm_mode = True
@@ -128,6 +129,25 @@ class ReservationOut(BaseModel):
     pick_up_date: date
     return_date: date
     pick_up_address: LocationBase
+    costumes: List[CostumeItemOut]
+    total_cost: float
+
+    class Config:
+        orm_mode=True
+
+class RentalBase(BaseModel):
+    start_date: date
+    end_date: date
+    class Config:
+        orm_mode=True   
+
+class RentalDb(RentalBase):
+    id: str
+    reservation_id: str
+    class Config:
+        orm_mode=True
+
+class RentalOut(RentalBase):
     costumes: List[CostumeItemOut]
     total_cost: float
 

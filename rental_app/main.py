@@ -52,20 +52,36 @@ def check_dates_range(date_from: date, date_to: date):
         return True
     return False
 
+
 def get_reservation_out(reservation: models.Reservation, db: Session) -> schemas.ReservationOut:
-    costumes = crud.get_items_from_reservation(db, reservation.id)
+    costumes = reservation.items
     reservations_prices = [costume.model.price for costume in costumes]
     total_cost = sum(reservations_prices)
-    models_quanity =  crud.get_model_quantities_in_reservation(db, reservation)
+    models_quantity =  crud.get_model_quantities_in_reservation(db, reservation)
 
-    print(models_quanity)
 
     return schemas.ReservationOut(reservation_code=reservation.id, date=reservation.date, pick_up_date=reservation.pick_up_date, \
         return_date=reservation.return_date, pick_up_address=reservation.pick_up_location, \
         costumes=[schemas.CostumeItemOut(quantity=model[1], \
-            model=schemas.CostumeModelOut(**model[0].__dict__, model_id=model[0].id)) for model in models_quanity], \
+            model=schemas.CostumeModelOut(**model[0].__dict__, model_id=model[0].id)) for model in models_quantity], \
         total_cost=total_cost)
 
+def get_rental_out(rental: models.CostumeRental, db: Session) -> schemas.RentalOut:
+    costumes = rental.items
+    rental_prices = [costume.model.price for costume in costumes]
+    total_cost = sum(rental_prices)
+    models = [c.model for c in costumes]
+    models_id_unique = set([m.id for m in models])
+    models_quantity = []
+
+    for model_id in models_id_unique:
+        models_list = [m for m in models if(m.id==model_id)]
+        models_quantity.append([models_list[0], len(models_list)])
+
+
+    return schemas.RentalOut(**rental.__dict__, costumes=[schemas.CostumeItemOut(quantity=model[1], \
+            model=schemas.CostumeModelOut(**model[0].__dict__, model_id=model[0].id)) for model in models_quantity], \
+            total_cost=total_cost)
 
 @app.post("/create_db")
 def create_database(admin_name: HTTPBasicCredentials = Depends(admin_check)):
@@ -109,7 +125,7 @@ def create_user(user: schemas.ClientCreate, db: Session=Depends(get_db)):
 
 @app.get("/system_user/all_users", response_model=List[schemas.ClientBase])
 def get_all_user_details(db: Session = Depends(get_db), admin: HTTPBasicCredentials = Depends(admin_check)):
-    return [schemas.ClientBase(**c.__dict__, nr_reservations= len(crud.get_user_reservations(db,c.id))) for c in crud.get_all_users(db)]
+    return [schemas.ClientBase(**c.__dict__, nr_reservations= len(crud.get_user_reservations(db,c.id).all())) for c in crud.get_all_users(db)]
 
 #@app.post("/test_new_reservation")
 #def create_test_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -129,6 +145,17 @@ def create_reservation(reservation: schemas.ReservationCreate, user: models.Clie
             )
     return get_reservation_out(new_reservation, db)
 
+@app.post("/cancel_reservation")
+def cancel_reservation(reservation_id: int, user:models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not(reservation_id in [r.id for r in user.reservations]):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="given reservation doesn't exist",
+        )
+    if(crud.cancel_reservation(db, reservation_id)):
+        return {"message": "reservation canceled"}
+    else:
+        {"message": "cannot cancel this reservation"}
 
 
 @app.post("/modify_reservation", status_code=status.HTTP_200_OK)
@@ -144,18 +171,59 @@ def modify_reservation(reservation: schemas.ReservationModify, user:models.Clien
             )
     return {"message":msg}
 
-@app.post("/system_user/rent_from_reservation/{reservation_id}/{pick_up_code}")
-def rent_from_reservations(reservation_id: int, pick_up_code: int, db: Session = Depends(get_db), \
+@app.post("/system_user/rent_from_reservation/{reservation_id}/{user_email}", response_model=schemas.RentalDb)
+def rent_from_reservations(reservation_id: int, user_email: str, db: Session = Depends(get_db), \
                             admin_name: HTTPBasicCredentials = Depends(admin_check)):
-    return crud.rent_from_reservation(db, reservation_id, pick_up_code)
+    try:
+        new_rental = crud.rent_from_reservation(db, reservation_id, user_email)
+    except RuntimeError as e:
+        raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=str(e),
+            )
+    return new_rental
+
+@app.post("/system_user/return_rental/{rental_id}/{user_email}")
+def return_items(rental_id: int, user_email: str, db: Session = Depends(get_db), \
+                admin_name: HTTPBasicCredentials = Depends(admin_check)):
+    user = db.query(models.Client).filter_by(email=user_email).first()
+    error_msg = None
+    if(user==None):
+        error_msg = "No user with given email"
+    rental = db.query(models.CostumeRental).get(rental_id)
+    if(rental==None):
+        error_msg = "Wrong rental_id"
+    
+    if(error_msg):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error_msg),
+        )
+    items = [i for i in rental.items]
+    for item in items:
+        item.rental_id = None
+    
+    db.commit()
+    return {"message": "items returned"}
+
 
 @app.get("/my_reservations", response_model=List[schemas.ReservationOut])
 def get_user_reservations(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
-    reservations_db = crud.get_user_reservations(db, user.id)
+    reservations_db = crud.get_user_reservations(db, user.id).all()
     models = []
     for res in reservations_db:
         models.append(get_reservation_out(res, db))
     return models
+
+#response_model=List[schemas.RentalOut]
+@app.get("/my_rentals")
+def get_user_rentals(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
+    rentals_db = crud.get_user_rentals(db, user)
+    rentals_out = []
+    for rental in rentals_db:
+        rentals_out.append(get_rental_out(rental, db))
+    return rentals_out
+
 
 @app.get("/models", response_model=List[schemas.CostumeModelOut])
 def get_all_models(db: Session = Depends(get_db)):
