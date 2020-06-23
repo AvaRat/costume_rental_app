@@ -216,8 +216,8 @@ def get_user_reservations(user: models.Client = Depends(get_current_user), db: S
         models.append(get_reservation_out(res, db))
     return models
 
-#response_model=List[schemas.RentalOut]
-@app.get("/my_rentals")
+
+@app.get("/my_rentals", response_model=List[schemas.RentalOut])
 def get_user_rentals(user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     rentals_db = crud.get_user_rentals(db, user)
     rentals_out = []
