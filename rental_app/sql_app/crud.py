@@ -42,7 +42,7 @@ def create_reservation_without_checks(db: Session, reservation: schemas.Reservat
 def create_reservation(db: Session, reservation: schemas.ReservationCreate, username: str):
     #BUG -> passing multiple model_id of the same value in a list
 
-    total_res = len(db.query(models.Reservation).all())
+    total_res = db.query(models.Reservation).order_by(models.Reservation.id.asc()).all()[-1].id
     date_from = reservation.pick_up_date
     date_to = reservation.return_date
 
