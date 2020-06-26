@@ -89,10 +89,6 @@ def create_database(admin_name: HTTPBasicCredentials = Depends(admin_check)):
     return create_db.populate_new_db()
 
 
-@app.post("/login")
-def login(user: models.Client = Depends(get_current_user):
-    return {"message": " Welcome "+user.name}
-
 def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: Session = Depends(get_db)):
     user = crud.get_user_from_username(db, credentials.username)
     if(user == None):
@@ -109,6 +105,12 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
             headers={"WWW-Authenticate": "Basic"},
         )
     return user
+
+
+@app.post("/login")
+def login(user: models.Client = Depends(get_current_user)):
+    return {"message": " Welcome "+user.name}
+
 
 @app.post("/test_new_reservation")
 def post_test(reservation: schemas.ReservationCreateTest, db:Session = Depends(get_db)):
