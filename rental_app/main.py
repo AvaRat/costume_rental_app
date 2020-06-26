@@ -109,7 +109,7 @@ def get_current_user(credentials: HTTPBasicCredentials = Depends(security), db: 
 
 @app.post("/login")
 def login(user: models.Client = Depends(get_current_user)):
-    return {"message": " Welcome "+user.name}
+    return {"message": " Welcome "+user.login}
 
 
 @app.post("/test_new_reservation")
