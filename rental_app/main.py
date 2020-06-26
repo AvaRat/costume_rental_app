@@ -142,6 +142,11 @@ def get_all_user_details(db: Session = Depends(get_db), admin: HTTPBasicCredenti
 @app.post("/new_reservation", status_code=status.HTTP_201_CREATED, response_model=schemas.ReservationOut)
 def create_reservation(reservation: schemas.ReservationCreate, user: models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     #return crud.create_reservation(db, reservation, username=user.login)
+    if(reservation.pick_up_date < date.today()):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="chosen date is in the past",
+        )
     try:
         new_reservation = crud.create_reservation(db, reservation, username=user.login)
     except RuntimeError as e:
