@@ -123,6 +123,7 @@ def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, 
     #TODO check if costumes are available during chosen dates
     reservation_old.pick_up_date = reservation_new.pick_up_date
     reservation_old.return_date = reservation_new.return_date
+    reservation_old.pick_up_location_id = reservation_new.pick_up_location_id
     msg_info = "succesfully modified reservation"
     db.commit()
     return msg_info
