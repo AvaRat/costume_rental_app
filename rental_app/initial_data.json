@@ -1,12 +1,12 @@
 {
     "Models": [
-        {"id": 1, "name": "Piracki kozak", "size": "M", "type_": "regularny", "collection": "podróżnicze", "price": 143.2},
-        {"id": 2, "name": "Bawarczyk", "size": "L", "type_": "regularny", "collection": "dookoła świata", "price": 155},
-        {"id": 3, "name": "Szkot", "size": "M", "type_": "regularny", "collection": "dookoła świata", "price": 100},
-        {"id": 4, "name": "Kaszub", "size": "S", "type_": "regularny", "collection": "dookoła świata", "price": 180},
-        {"id": 5, "name": "Kapitan Ameryka", "size": "M", "type_": "regularny", "collection": "superbohaterowie", "price": 220.2},
-        {"id": 6, "name": "SpiderMan", "size": "S", "type_": "regularny", "collection": "superbohaterowie", "price": 85.99},
-        {"id": 7, "name": "Król Melchior", "size": "L", "type_": "regularny", "collection": "świąteczna", "price": 259}
+        {"id": 1, "name": "Piracki kozak", "size": "M", "type": "regularny", "collection": "podróżnicze", "price": 143.2},
+        {"id": 2, "name": "Bawarczyk", "size": "L", "type": "regularny", "collection": "dookoła świata", "price": 155},
+        {"id": 3, "name": "Szkot", "size": "M", "type": "regularny", "collection": "dookoła świata", "price": 100},
+        {"id": 4, "name": "Kaszub", "size": "S", "type": "regularny", "collection": "dookoła świata", "price": 180},
+        {"id": 5, "name": "Kapitan Ameryka", "size": "M", "type": "regularny", "collection": "superbohaterowie", "price": 220.2},
+        {"id": 6, "name": "SpiderMan", "size": "S", "type": "regularny", "collection": "superbohaterowie", "price": 85.99},
+        {"id": 7, "name": "Król Melchior", "size": "L", "type": "regularny", "collection": "świąteczna", "price": 259}
     ],
     "Employees": [
         {"id": 1, "address": "Polna 54, 87-100 Toruń", "name": "Mariusz", "surname": "Magazynowski", "location_id":1},
