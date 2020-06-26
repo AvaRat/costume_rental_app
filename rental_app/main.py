@@ -151,7 +151,7 @@ def create_reservation(reservation: schemas.ReservationCreate, user: models.Clie
             )
     return get_reservation_out(new_reservation, db)
 
-@app.post("/cancel_reservation")
+@app.delete("/reservation")
 def cancel_reservation(reservation_id: int, user:models.Client = Depends(get_current_user), db: Session = Depends(get_db)):
     if not(reservation_id in [r.id for r in user.reservations]):
         raise HTTPException(

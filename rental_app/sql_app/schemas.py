@@ -110,7 +110,6 @@ class ReservationCreate(ReservationBase):
 
 class ReservationModify(ReservationBase):
     id: int
-    cancel: bool
     class Config:
         orm_mode = True;
 

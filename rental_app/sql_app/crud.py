@@ -120,16 +120,10 @@ def modify_reservation(db: Session, reservation_new: schemas.ReservationModify, 
     if(reservation_old.valid==False):
         raise RuntimeError("This reservation is not valid anymore")
 
-    if(reservation_new.cancel):
-            db.query(models.Reservation).filter_by(id=reservation_new.id).delete()
-            for costume in db.query(models.CostumeItem).filter_by(reservation_id=reservation_new.id).all():
-                costume.reservation_id = None
-            msg_info = "reservation_cancelled"
-    else:
-        #TODO check if costumes are available during chosen dates
-        reservation_old.pick_up_date = reservation_new.pick_up_date
-        reservation_old.return_date = reservation_new.return_date
-        msg_info = "succesfully modified reservation"
+    #TODO check if costumes are available during chosen dates
+    reservation_old.pick_up_date = reservation_new.pick_up_date
+    reservation_old.return_date = reservation_new.return_date
+    msg_info = "succesfully modified reservation"
     db.commit()
     return msg_info
 
