@@ -3,7 +3,7 @@ from datetime import date, timedelta
 import secrets
 
 from sqlalchemy.orm import Session
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, status, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -28,6 +28,8 @@ app.add_middleware(
 logger_ = logging.getLogger('uvicorn.info')
 
 @app.post("/payment/notify")
-def notify():
+async def notify(request: Request):
     logger_.info("got payment notify")
+    body = await request.json()
+    logger_.info(body)
     return JSONResponse(content={"message":"success"}, status_code=status.HTTP_200_OK)
