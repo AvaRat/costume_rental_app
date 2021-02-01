@@ -2,6 +2,8 @@ from typing import List
 from datetime import date, timedelta
 import secrets
 
+import request
+
 from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, HTTPException, status, Request
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
@@ -27,7 +29,10 @@ app.add_middleware(
 
 logger_ = logging.getLogger('uvicorn.info')
 
-@app.post("/payment/notify")
+def redirect():
+    request.post('https://enrollment-service.herokuapp.com/payu/notify', )
+
+@app.post("/blik/notify")
 async def notify(request: Request):
     logger_.info("got payment notify")
     body = await request.json()
