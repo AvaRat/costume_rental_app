@@ -2,7 +2,7 @@ from typing import List
 from datetime import date, timedelta
 import secrets
 
-import request
+import requests
 
 from sqlalchemy.orm import Session
 from fastapi import Depends, FastAPI, HTTPException, status, Request
@@ -29,12 +29,14 @@ app.add_middleware(
 
 logger_ = logging.getLogger('uvicorn.info')
 
-def redirect():
-    request.post('https://enrollment-service.herokuapp.com/payu/notify', )
+def redirect(data):
+    response = requests.post('https://enrollment-service.herokuapp.com/payment/payu/blik/notify', json=data)
+    logger_.info(response.status_code)
 
 @app.post("/blik/notify")
 async def notify(request: Request):
     logger_.info("got payment notify")
     body = await request.json()
     logger_.info(body)
+    redirect(body)
     return JSONResponse(content={"message":"success"}, status_code=status.HTTP_200_OK)
