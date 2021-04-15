@@ -10,12 +10,12 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+from .sql_app import crud, models, schemas
 
 origins = [
     'http://localhost:8080',
     'http://127.0.0.1'
 ]
-
 
 app = FastAPI()
 
@@ -40,3 +40,12 @@ async def notify(request: Request):
     logger_.info(body)
     redirect(body)
     return JSONResponse(content={"message":"success"}, status_code=status.HTTP_200_OK)
+
+
+@app.get("/models")
+def get_all_models():
+    all_models = {'name':'Bawarczyk', 'collection':'dookoła świata','size':'M'}
+    return [all_models]
+
+
+    

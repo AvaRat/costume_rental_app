@@ -3,6 +3,11 @@ from datetime import date
 
 from pydantic import BaseModel
 
+class ModelTest(BaseModel):
+    name: str
+    collection: str
+    size: str
+
 class CostumeModelBase(BaseModel):
     name: str
     size: str
