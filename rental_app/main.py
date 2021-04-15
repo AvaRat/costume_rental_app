@@ -45,7 +45,7 @@ async def notify(request: Request):
 @app.get("/models")
 def get_all_models():
     all_models = {'name':'Bawarczyk', 'collection':'dookoła świata','size':'M'}
-    return [all_models]
+    return all_models
 
 
     
